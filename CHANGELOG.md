@@ -2,5 +2,6 @@
 
 ## 1.0.0
 
-- `backup` and `drill` jobs, `node` and `machine` executors, and the `install-postgres-client`, `backup` and `drill` commands.
+- Jobs `backup-and-drill`, `backup` and `drill`, executors `node` and `machine`, and the commands `install-postgres-client`, `backup`, `drill` and `backup-and-drill`.
+- `backup-and-drill` drills the exact snapshot its backup wrote.
 - Runs backupdrill CLI 2.11.0 by default.

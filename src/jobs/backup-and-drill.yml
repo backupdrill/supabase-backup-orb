@@ -1,0 +1,66 @@
+description: >
+  Back up a Supabase project to your own S3, R2 or B2 bucket, then restore
+  that same snapshot into a throwaway Postgres on a Linux VM and check it: the
+  archive checksum, a sample of Storage file checksums, that every table came
+  back, and the exact row count of every ordinary table against the dump. One
+  job, so a serial group keeps the backup and its drill together.
+executor: << parameters.executor >>
+
+parameters:
+  executor:
+    type: executor
+    default: machine
+    description: >
+      Executor to run on. The default is this orb's machine executor. The
+      drill needs Docker on the job's own host, so it has to be a machine
+      executor.
+  cli_version:
+    type: string
+    default: "2.11.0"
+    description: Version of the backupdrill npm package to run, or latest.
+  postgres_version:
+    type: integer
+    default: 17
+    description: >
+      PostgreSQL major version of the pg_dump and pg_restore to use. It cannot
+      be lower than the Postgres version of your Supabase project.
+  bucket:
+    type: string
+    default: ""
+    description: Bucket name. Leave empty to use the BACKUPDRILL_S3_BUCKET variable.
+  s3_endpoint:
+    type: string
+    default: ""
+    description: >
+      S3 endpoint for R2, B2 and other S3-compatible storage. Leave empty for
+      AWS S3 or to use the BACKUPDRILL_S3_ENDPOINT variable.
+  s3_region:
+    type: string
+    default: ""
+    description: >
+      Bucket region, such as us-east-1. Leave empty to use the
+      BACKUPDRILL_S3_REGION variable, or auto when that isn't set either.
+  project_name:
+    type: string
+    default: ""
+    description: >
+      Folder for this project's snapshots in the bucket. Leave empty to use the
+      BACKUPDRILL_PROJECT_NAME variable, or supabase.
+  no_output_timeout:
+    type: string
+    default: 30m
+    description: >
+      How long the step may go without printing anything before CircleCI stops
+      it. A large pg_dump or pg_restore can stay quiet for a while.
+
+steps:
+  - install-postgres-client:
+      postgres_version: << parameters.postgres_version >>
+  - backup-and-drill:
+      cli_version: << parameters.cli_version >>
+      postgres_version: << parameters.postgres_version >>
+      bucket: << parameters.bucket >>
+      s3_endpoint: << parameters.s3_endpoint >>
+      s3_region: << parameters.s3_region >>
+      project_name: << parameters.project_name >>
+      no_output_timeout: << parameters.no_output_timeout >>

@@ -7,24 +7,26 @@ usage:
   version: 2.1
   orbs:
     backupdrill: backupdrill/supabase-backup@1.0.0
+  parameters:
+    backupdrill:
+      type: string
+      default: ""
   workflows:
     supabase-backup:
       when:
-        equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+        equal: [backup-and-drill, << pipeline.parameters.backupdrill >>]
       jobs:
-        - backupdrill/backup:
-            name: backup-production
+        - backupdrill/backup-and-drill:
+            name: production
             context: [backup-bucket, supabase-production]
+            bucket: my-supabase-backups
+            s3_endpoint: https://<account-id>.r2.cloudflarestorage.com
             project_name: production
-            serial-group: << pipeline.project.slug >>/backup-production
+            serial-group: << pipeline.project.slug >>/backupdrill-production
         - backupdrill/backup:
-            name: backup-staging
+            name: staging
             context: [backup-bucket, supabase-staging]
+            bucket: my-supabase-backups
+            s3_endpoint: https://<account-id>.r2.cloudflarestorage.com
             project_name: staging
-            serial-group: << pipeline.project.slug >>/backup-staging
-        - backupdrill/drill:
-            name: drill-production
-            context: backup-bucket
-            project_name: production
-            requires:
-              - backup-production
+            serial-group: << pipeline.project.slug >>/backupdrill-staging
