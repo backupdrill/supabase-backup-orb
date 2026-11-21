@@ -27,7 +27,21 @@ case "$mode" in
   *) fail "Unknown backupdrill command: '${mode}'" ;;
 esac
 if ! [[ "$version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-  fail "cli_version must be latest or a full version such as 2.11.0, got: '${version}'"
+  fail "cli_version must be latest or a full version such as 2.11.1, got: '${version}'"
+fi
+# Releases before 2.11.1 copy pending password-reset and confirmation tokens
+# into auth.dump, and run the drill's test sign-up with the sandbox online,
+# where a restored Auth trigger could reach outside systems.
+if [ "$version" != "latest" ]; then
+  # Parameter expansion, not a here-string: CircleCI reads a double less-than
+  # sign in an included script as the start of its own parameter syntax.
+  major="${version%%.*}"
+  minor="${version#*.}"
+  minor="${minor%%.*}"
+  patch="${version##*.}"
+  if ((10#$major < 2 || (10#$major == 2 && (10#$minor < 11 || (10#$minor == 11 && 10#$patch < 1))))); then
+    fail "cli_version must be 2.11.1 or newer (or latest), got: '${version}'. Older releases keep pending Auth tokens in auth.dump and run the drill's test sign-up with network access."
+  fi
 fi
 
 # The CLI falls back to DATABASE_URL when BACKUPDRILL_DATABASE_URL isn't set.

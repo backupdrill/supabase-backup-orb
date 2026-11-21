@@ -37,7 +37,7 @@ command="$1"
 env | cut -d= -f1 | grep -E '^(BACKUPDRILL_|DATABASE_URL$)' | sort >"$HOME/$command.env" || true
 echo "$*" >"$HOME/$command.args"
 case "$command" in
-  --version) echo "2.11.0" ;;
+  --version) echo "2.11.1" ;;
   backup)
     if [ -n "${FAKE_BACKUP_STDOUT:-}" ]; then echo "$FAKE_BACKUP_STDOUT"; exit 0; fi
     echo '{"ok":true,"manifest":{"dump":{"key":"backupdrill/acme/2026-11-21T03-00-00-000Z/dump.pgcustom"}}}'
@@ -51,7 +51,7 @@ run() { # <log dir> <mode> [VAR=value...]
   shift 2
   mkdir -p "$log"
   env -i PATH="$sandbox/bin:$PATH" HOME="$log" \
-    BACKUPDRILL_ORB_COMMAND="$mode" BACKUPDRILL_ORB_CLI_VERSION=2.11.0 \
+    BACKUPDRILL_ORB_COMMAND="$mode" BACKUPDRILL_ORB_CLI_VERSION=2.11.1 \
     BACKUPDRILL_DATABASE_URL=postgresql://source BACKUPDRILL_S3_SECRET_ACCESS_KEY=bucket-secret \
     BACKUPDRILL_SUPABASE_STORAGE_SECRET_ACCESS_KEY=storage-secret DATABASE_URL=postgresql://test-db \
     BACKUPDRILL_PING_URL=https://hc-ping.example/check "$@" \
@@ -86,12 +86,24 @@ check "the malformed result isn't echoed" bash -c "! grep -q private/report.pdf 
 check "no drill runs after a malformed result" bash -c "[ ! -e '$sandbox/bad/drill.args' ]"
 
 # Versions other than latest or x.y.z are refused before anything is installed.
-if run "$sandbox/version" backup BACKUPDRILL_ORB_CLI_VERSION='2.11.0 --registry=http://evil'; then
+if run "$sandbox/version" backup BACKUPDRILL_ORB_CLI_VERSION='2.11.1 --registry=http://evil'; then
   check "a malformed cli_version is refused" false
 else
   check "a malformed cli_version is refused" true
 fi
 check "nothing is installed for a refused version" bash -c "[ ! -e '$sandbox/version/npm.env' ]"
+
+# Releases before 2.11.1 are refused; 2.11.1, newer ones and latest install.
+for old in 2.11.0 2.10.1 1.99.99; do
+  if run "$sandbox/old-$old" backup BACKUPDRILL_ORB_CLI_VERSION="$old"; then
+    check "cli_version $old is refused" false
+  else
+    check "cli_version $old is refused" bash -c "grep -q '2.11.1 or newer' '$sandbox/old-$old/out.txt' && [ ! -e '$sandbox/old-$old/npm.env' ]"
+  fi
+done
+for ok in 2.11.1 2.12.0 3.0.0 latest; do
+  check "cli_version $ok is accepted" run "$sandbox/ok-$ok" backup BACKUPDRILL_ORB_CLI_VERSION="$ok"
+done
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures failed"
