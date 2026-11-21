@@ -1,9 +1,11 @@
 description: >
   Install pg_dump and back up a Supabase project's Postgres database to your
-  own S3, R2 or B2 bucket with the backupdrill CLI. Auth users go into the
-  same snapshot when the database role can read them, and Storage files once
-  the four BACKUPDRILL_SUPABASE_STORAGE_* variables are set. Put the
-  BACKUPDRILL_* secrets in a context.
+  own S3, R2 or B2 bucket with the backupdrill CLI.
+  By default the CLI tries to save Auth users to auth.dump when the
+  database role can read the Auth tables; BACKUPDRILL_AUTH=off skips that dump.
+  To include Storage files, set all four BACKUPDRILL_SUPABASE_STORAGE_*
+  variables. Put the BACKUPDRILL_* secrets in a
+  context.
 
 executor: << parameters.executor >>
 

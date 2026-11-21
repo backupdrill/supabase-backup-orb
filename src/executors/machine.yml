@@ -1,9 +1,8 @@
 description: >
-  Linux VM for the drill job. The drill starts a throwaway Postgres with
-  `docker run -p 127.0.0.1:0:5432` and connects to it on 127.0.0.1, so Docker
-  has to run on the same host as the job. With the Docker executor and
-  setup_remote_docker the port opens on a remote host, where the job can't
-  reach it.
+  Linux VM for the jobs that drill. The drill starts Postgres with
+  `docker run -p 127.0.0.1:0:5432` and connects over loopback. With the Docker
+  executor and setup_remote_docker, the job's 127.0.0.1 is the job container
+  itself, so it can't reach the Postgres port published there.
 
 parameters:
   image:

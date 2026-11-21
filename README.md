@@ -3,7 +3,7 @@
 A CircleCI orb that runs the open-source [backupdrill](https://www.npmjs.com/package/backupdrill) CLI in your pipeline. It backs up your Supabase project to an S3-compatible bucket you control, such as AWS S3, Cloudflare R2 or Backblaze B2, and runs restore drills on those backups.
 
 - **Backup** dumps the Postgres database next to a `manifest.json` that records the dump's SHA-256 checksum. Once you set the project's Storage S3 endpoint, region, access key ID and secret access key, it copies your Storage files too. It dumps the `public` schema unless you list others in a `BACKUPDRILL_SCHEMAS` variable (comma-separated). By default it also tries to save Auth users to a separate `auth.dump`; see [Auth users](#auth-users).
-- **Drill** restores a snapshot into a throwaway Postgres and checks it: the archive checksum, a sample of Storage file checksums, and that every table in the manifest came back. For ordinary tables it compares the exact row count with the count in the dump, and a difference of one row fails the job. Materialized views, partitioned parent tables and tables an extension fills aren't compared row by row; the drill flags them if they come back empty when the manifest expects rows. If the snapshot includes `auth.dump`, the drill also tries to restore it and reports the Auth result separately. The database and Storage checks decide whether the job passes.
+- **Drill** restores a snapshot into a throwaway Postgres. It verifies the archive checksum and samples checksums of the backed-up Storage files. The job fails if a checked checksum differs, a table listed in `manifest.json` is missing, or an ordinary table has even one row more or fewer than the dump. Materialized views, partitioned parent tables and tables an extension fills aren't compared row by row; the drill flags them if they come back empty when the manifest expects rows. If the snapshot includes `auth.dump`, the drill also tries to restore it and reports the Auth result separately. The database and Storage checks decide whether the job passes.
 
 Your CircleCI job reads the data from Supabase and writes the backup to your bucket. The CLI sends no database contents or Storage files to BackupDrill. The docs for the [Supabase backup CLI](https://backupdrill.com/docs/cli) explain the connection string, bucket and Storage settings these jobs read.
 
@@ -65,14 +65,14 @@ They all take the same parameters. Leave a bucket parameter empty to use its var
 
 | Parameter | Default | |
 |---|---|---|
-| `cli_version` | `2.11.1` | Version of the backupdrill npm package, or `latest` |
+| `cli_version` | `2.11.1` | Version of the backupdrill npm package, 2.11.1 or newer, or `latest`. Older releases are refused: they keep pending Auth tokens in `auth.dump` and run the drill's test sign-up with network access |
 | `postgres_version` | `17` | Major version of the PostgreSQL client the job installs. It can't be lower than your Supabase Postgres version, or for a drill on its own, the `pg_dump` that made the snapshot |
 | `bucket`, `s3_endpoint`, `s3_region`, `project_name` | empty | See above. `project_name` is the folder for the project's snapshots, `supabase` when nothing sets it |
 | `no_output_timeout` | `30m` | How long the step may print nothing before CircleCI stops it |
 | `executor` | see the table above | Executor to run on |
 
 - The `node` executor is `node:24-trixie-slim`. The backup installs `pg_dump` into it from the PostgreSQL apt repository.
-- The `machine` executor is a Linux VM, `ubuntu-2404:current`. The drill starts its throwaway Postgres with `docker run -p 127.0.0.1:0:5432` and connects to 127.0.0.1, so Docker has to run on the job's own host. With the Docker executor and `setup_remote_docker` that port opens on a remote host the job can't reach. For bigger databases, pass `executor: {name: backupdrill/machine, resource_class: large}`.
+- The `machine` executor is a Linux VM, `ubuntu-2404:current`. Use it for the jobs that drill. The drill starts Postgres with `docker run -p 127.0.0.1:0:5432` and connects over loopback. With the Docker executor and `setup_remote_docker`, the job's `127.0.0.1` points to the job container itself, so it can't reach the published Postgres port there. For bigger databases, pass `executor: {name: backupdrill/machine, resource_class: large}`.
 
 The orb also has the commands `install-postgres-client`, `backup`, `drill` and `backup-and-drill`, if you'd rather call them in a job of your own. The commands look for the PostgreSQL client in `/usr/lib/postgresql/<postgres_version>/bin`, where `install-postgres-client` puts it on Debian and Ubuntu, and the two that drill still need a machine executor.
 
@@ -81,7 +81,7 @@ The orb also has the commands `install-postgres-client`, `backup`, `drill` and `
 By default the CLI tries to save `auth.users` and `auth.identities` to a separate `auth.dump` in each snapshot. The file holds email addresses and password hashes, so check who can read the bucket. To confirm a snapshot has it, look for `"status": "included"` under `auth` in its `manifest.json`.
 
 - In the default mode the backup still passes when the database role can't read the Auth tables. Set a `BACKUPDRILL_AUTH` variable to `on` to fail the job instead, or to `off` to skip `auth.dump`. With `on`, a failed Auth backup still leaves a database snapshot that a later drill can use, but `backup-and-drill` stops before its drill.
-- If you list `auth` in `BACKUPDRILL_SCHEMAS`, the Auth tables go into the main dump and `auth.dump` is skipped.
+- If you list `auth` in `BACKUPDRILL_SCHEMAS`, `dump.pgcustom` copies the Auth tables as they are, including any pending password-reset and confirmation tokens, and `auth.dump` is skipped. The separate `auth.dump` clears those tokens before upload, so leave `auth` out of `BACKUPDRILL_SCHEMAS` for routine Auth backups.
 
 ## Drill on its own schedule
 
@@ -111,7 +111,7 @@ workflows:
 
 Here the bucket keys are in a `backup-bucket` context and the Supabase variables only in `supabase-source`, which only the backup uses. Project-level variables still reach both jobs, so keep the Supabase ones out of the project settings. With one context for both, the orb clears the Supabase variables before it starts the drill CLI.
 
-The shared serial group runs the two jobs one at a time, so a drill doesn't restore a snapshot that a backup is still writing. Schedule them at different hours: when jobs from two pipelines wait in the same group, CircleCI may skip the one from the older pipeline. A drill on its own tries the newest snapshot folder, and fails if that snapshot is incomplete.
+The shared serial group runs the two jobs one at a time, so a drill doesn't restore a snapshot that a backup is still writing. Schedule them at different hours: when jobs from two pipelines wait in the same group, CircleCI may skip the one from the older pipeline. A drill on its own reads the newest snapshot folder and doesn't fall back to an older one, so it fails when that folder has no `manifest.json`, for example after a backup that stopped partway.
 
 ## More than one Supabase project
 
@@ -146,7 +146,7 @@ For separate backup and drill jobs, put each ping URL in a context only that job
 ## Good to know
 
 - **Egress.** Each backup sends the selected schemas out of Supabase again, and that counts toward your Supabase egress. Run `npx backupdrill estimate` before scheduling daily backups of a large database. The drill reads from your bucket, not from Supabase.
-- **Drill cost.** Each drill downloads the whole dump from your bucket and restores it on a CircleCI VM. AWS S3 can charge for that data transfer; R2 has no egress fees. Drilling weekly instead of daily cuts both.
+- **Drill cost.** Each drill downloads the whole dump from your bucket and restores it on a CircleCI VM. AWS S3 can charge for that data transfer; R2 has no egress fees. Weekly drills download less data and use less CircleCI VM time than daily drills.
 - **What the orb leaves out.** It installs the CLI from the public npm registry with your `.npmrc` files ignored, and runs npm with none of your `BACKUPDRILL_*` variables in its environment. It unsets `DATABASE_URL` (the CLI would otherwise fall back to it, and in CI it usually points at a test database) and ignores any `backupdrill.config.json` in a checked-out repository. The jobs don't check out your code. Settings come from the parameters and the environment only.
 - **Job log.** The log shows the CLI's progress and its summary. The JSON the CLI prints on stdout, which for a backup lists every table and Storage file path, isn't printed.
 - **Versions.** `cli_version` pins the backupdrill npm version (default `2.11.1`).

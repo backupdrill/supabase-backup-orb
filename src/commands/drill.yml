@@ -1,8 +1,10 @@
 description: >
-  Run `backupdrill drill`: restore the latest snapshot from your bucket into a
-  throwaway Postgres in Docker and check it. Needs Docker on the same host (a
-  machine executor), Node.js 20 or newer and the PostgreSQL client. The CLI
-  gets the bucket settings but not the database URL or the Storage keys.
+  Run `backupdrill drill`: restore the newest snapshot from your bucket into a
+  throwaway Postgres in Docker and check it. Needs a machine executor (the
+  drill connects to that Postgres over 127.0.0.1, which in a Docker executor
+  job is the job container itself), Node.js 20 or newer and the PostgreSQL
+  client. The CLI gets the bucket settings but not the database URL or the
+  Storage keys.
 
 parameters:
   cli_version:

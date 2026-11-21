@@ -1,8 +1,10 @@
 description: >
   Run `backupdrill backup`, then `backupdrill drill` on the snapshot that
-  backup just wrote. Needs Docker on the same host (a machine executor),
-  Node.js 20 or newer and the PostgreSQL client. The drill doesn't get the
-  database URL or the Storage keys.
+  backup just wrote. Needs a machine executor (the drill connects to its
+  throwaway Postgres over 127.0.0.1, which in a Docker executor job is the job
+  container itself), Node.js 20 or newer and the PostgreSQL client. The drill
+  doesn't get the database URL or the Storage keys.
+
 parameters:
   cli_version:
     type: string

@@ -1,9 +1,10 @@
 description: >
-  Restore the latest snapshot from your bucket into a throwaway Postgres on a
-  Linux VM and check it: the archive checksum, a sample of Storage file
-  checksums, that every table came back, and the exact row count of every
-  ordinary table against the dump. Any difference fails the job. Needs only
-  the bucket keys, not the database URL.
+  Restore the newest snapshot from your bucket into a throwaway Postgres on a
+  Linux VM and check it. The drill verifies the archive checksum and samples checksums of the
+  backed-up Storage files. The job fails if a checked checksum differs, a
+  table listed in manifest.json is missing, or an ordinary table has even one
+  row more or fewer than the dump. Needs only the
+  bucket keys, not the database URL.
 
 executor: << parameters.executor >>
 
@@ -12,9 +13,10 @@ parameters:
     type: executor
     default: machine
     description: >
-      Executor to run on. The default is this orb's machine executor. The
-      drill needs Docker on the job's own host, so it has to be a machine
-      executor.
+      Executor to run on. The default is this orb's machine executor. It has
+      to be a machine executor: the drill connects to its throwaway Postgres
+      over 127.0.0.1, which in a Docker executor job is the job container
+      itself.
   cli_version:
     type: string
     default: "2.11.1"
