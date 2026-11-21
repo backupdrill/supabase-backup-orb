@@ -2,8 +2,8 @@ description: >
   Restore the newest snapshot from your bucket into a throwaway Postgres on a
   Linux VM and check it. The drill verifies the archive checksum and samples checksums of the
   backed-up Storage files. The job fails if a checked checksum differs, a
-  table listed in manifest.json is missing, or an ordinary table has even one
-  row more or fewer than the dump. Needs only the
+  table listed in manifest.json is missing, or an ordinary table's restored
+  row count differs from the count recorded in the backup. Needs only the
   bucket keys, not the database URL.
 
 executor: << parameters.executor >>
@@ -20,7 +20,7 @@ parameters:
   cli_version:
     type: string
     default: "2.11.1"
-    description: Version of the backupdrill npm package to run, or latest.
+    description: backupdrill npm version. Use 2.11.1 or a newer full version number, or latest.
   postgres_version:
     type: integer
     default: 17
