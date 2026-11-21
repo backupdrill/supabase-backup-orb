@@ -16,7 +16,7 @@ parameters:
       executor.
   cli_version:
     type: string
-    default: "2.11.0"
+    default: "2.11.1"
     description: Version of the backupdrill npm package to run, or latest.
   postgres_version:
     type: integer

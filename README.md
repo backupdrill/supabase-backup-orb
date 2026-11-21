@@ -65,7 +65,7 @@ They all take the same parameters. Leave a bucket parameter empty to use its var
 
 | Parameter | Default | |
 |---|---|---|
-| `cli_version` | `2.11.0` | Version of the backupdrill npm package, or `latest` |
+| `cli_version` | `2.11.1` | Version of the backupdrill npm package, or `latest` |
 | `postgres_version` | `17` | Major version of the PostgreSQL client the job installs. It can't be lower than your Supabase Postgres version, or for a drill on its own, the `pg_dump` that made the snapshot |
 | `bucket`, `s3_endpoint`, `s3_region`, `project_name` | empty | See above. `project_name` is the folder for the project's snapshots, `supabase` when nothing sets it |
 | `no_output_timeout` | `30m` | How long the step may print nothing before CircleCI stops it |
@@ -149,7 +149,7 @@ For separate backup and drill jobs, put each ping URL in a context only that job
 - **Drill cost.** Each drill downloads the whole dump from your bucket and restores it on a CircleCI VM. AWS S3 can charge for that data transfer; R2 has no egress fees. Drilling weekly instead of daily cuts both.
 - **What the orb leaves out.** It installs the CLI from the public npm registry with your `.npmrc` files ignored, and runs npm with none of your `BACKUPDRILL_*` variables in its environment. It unsets `DATABASE_URL` (the CLI would otherwise fall back to it, and in CI it usually points at a test database) and ignores any `backupdrill.config.json` in a checked-out repository. The jobs don't check out your code. Settings come from the parameters and the environment only.
 - **Job log.** The log shows the CLI's progress and its summary. The JSON the CLI prints on stdout, which for a backup lists every table and Storage file path, isn't printed.
-- **Versions.** `cli_version` pins the backupdrill npm version (default `2.11.0`).
+- **Versions.** `cli_version` pins the backupdrill npm version (default `2.11.1`).
 
 ## Tests
 
