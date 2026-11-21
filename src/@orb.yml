@@ -1,0 +1,13 @@
+version: 2.1
+
+description: >
+  Scheduled Supabase backups to your own S3, R2 or B2 bucket, plus restore
+  drills that check each backup restores. The backup job runs the open-source
+  backupdrill CLI (MIT) to dump the Postgres database, with the Auth users when
+  the database role can read them and the Storage files once you add the
+  project's Storage S3 keys. The drill job restores the latest snapshot into a
+  throwaway Postgres and compares every table with the dump.
+
+display:
+  home_url: https://backupdrill.com
+  source_url: https://github.com/backupdrill/supabase-backup-orb

@@ -1,0 +1,20 @@
+description: >
+  Docker executor for the backup job: the official Node.js image on Debian.
+  The job installs pg_dump into it with apt when it starts.
+
+parameters:
+  tag:
+    type: string
+    default: "24-trixie-slim"
+    description: >
+      Tag of the node image on Docker Hub. Pick a Debian-based tag, because
+      the PostgreSQL client is installed with apt.
+  resource_class:
+    type: string
+    default: medium
+    description: Docker resource class for the job.
+
+docker:
+  - image: node:<< parameters.tag >>
+
+resource_class: << parameters.resource_class >>
