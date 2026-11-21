@@ -1,0 +1,62 @@
+description: >
+  Run `backupdrill drill`: restore the newest snapshot from your bucket into a
+  throwaway Postgres in Docker and check it. Needs a machine executor (the
+  drill connects to that Postgres over 127.0.0.1, which in a Docker executor
+  job is the job container itself), Node.js 20 or newer and the PostgreSQL
+  client. The CLI gets the bucket settings but not the database URL or the
+  Storage keys.
+
+parameters:
+  cli_version:
+    type: string
+    default: "2.11.1"
+    description: backupdrill npm version. Use 2.11.1 or a newer full version number, or latest.
+  postgres_version:
+    type: integer
+    default: 17
+    description: >
+      PostgreSQL major version of the pg_restore to use. It cannot be lower
+      than the pg_dump that made the backup.
+  bucket:
+    type: string
+    default: ""
+    description: Bucket name. Leave empty to use the BACKUPDRILL_S3_BUCKET variable.
+  s3_endpoint:
+    type: string
+    default: ""
+    description: >
+      S3 endpoint for R2, B2 and other S3-compatible storage. Leave empty for
+      AWS S3 or to use the BACKUPDRILL_S3_ENDPOINT variable.
+  s3_region:
+    type: string
+    default: ""
+    description: >
+      Bucket region, such as us-east-1. Leave empty to use the
+      BACKUPDRILL_S3_REGION variable, or auto when that isn't set either.
+  project_name:
+    type: string
+    default: ""
+    description: >
+      Folder for this project's snapshots in the bucket. Leave empty to use the
+      BACKUPDRILL_PROJECT_NAME variable, or supabase.
+  no_output_timeout:
+    type: string
+    default: 30m
+    description: >
+      How long the step may go without printing anything before CircleCI stops
+      it. A large pg_restore can stay quiet for a while.
+
+steps:
+  - run:
+      name: Restore drill with backupdrill
+      no_output_timeout: << parameters.no_output_timeout >>
+      environment:
+        BACKUPDRILL_ORB_COMMAND: drill
+        BACKUPDRILL_ORB_CLI_VERSION: "<< parameters.cli_version >>"
+        BACKUPDRILL_ORB_BUCKET: "<< parameters.bucket >>"
+        BACKUPDRILL_ORB_S3_ENDPOINT: "<< parameters.s3_endpoint >>"
+        BACKUPDRILL_ORB_S3_REGION: "<< parameters.s3_region >>"
+        BACKUPDRILL_ORB_PROJECT_NAME: "<< parameters.project_name >>"
+        BACKUPDRILL_PG_RESTORE: /usr/lib/postgresql/<< parameters.postgres_version >>/bin/pg_restore
+        NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      command: <<include(scripts/run-cli.sh)>>

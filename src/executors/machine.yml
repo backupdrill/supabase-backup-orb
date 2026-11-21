@@ -1,0 +1,22 @@
+description: >
+  Linux VM for the jobs that drill. The drill starts Postgres with
+  `docker run -p 127.0.0.1:0:5432` and connects over loopback. With the Docker
+  executor and setup_remote_docker, the job's 127.0.0.1 is the job container
+  itself, so it can't reach the Postgres port published there.
+
+parameters:
+  image:
+    type: string
+    default: ubuntu-2404:current
+    description: Linux machine image.
+  resource_class:
+    type: string
+    default: medium
+    description: >
+      Machine resource class. The drill downloads the dump and restores it
+      on this VM, so pick a larger class for big databases.
+
+machine:
+  image: << parameters.image >>
+
+resource_class: << parameters.resource_class >>

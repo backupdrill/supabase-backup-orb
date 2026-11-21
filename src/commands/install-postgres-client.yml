@@ -1,0 +1,18 @@
+description: >
+  Install pg_dump, pg_restore and psql of one PostgreSQL major version from the
+  PostgreSQL apt repository. Needs a Debian or Ubuntu image, as root or with
+  sudo. The backup and drill jobs run it for you; use it when you call the
+  backup or drill command in a job of your own.
+
+parameters:
+  postgres_version:
+    type: integer
+    default: 17
+    description: PostgreSQL major version of the client tools.
+
+steps:
+  - run:
+      name: Install the PostgreSQL << parameters.postgres_version >> client
+      environment:
+        BACKUPDRILL_ORB_POSTGRES_VERSION: "<< parameters.postgres_version >>"
+      command: <<include(scripts/install-postgres-client.sh)>>

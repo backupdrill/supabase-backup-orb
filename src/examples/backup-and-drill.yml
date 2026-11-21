@@ -1,0 +1,24 @@
+description: >
+  Back up a Supabase project and restore-drill that same snapshot in one job.
+  The BACKUPDRILL_* secrets live in a context named supabase-backup. The
+  workflow runs when the backupdrill pipeline parameter is backup-and-drill:
+  set it on a schedule trigger (for example daily at 03:00 UTC), or when you
+  trigger a pipeline by hand. Pushes leave it empty, so they don't run it.
+usage:
+  version: 2.1
+  orbs:
+    backupdrill: backupdrill/supabase-backup@1.0.0
+  parameters:
+    backupdrill:
+      type: string
+      default: ""
+  workflows:
+    supabase-backup:
+      when:
+        equal: [backup-and-drill, << pipeline.parameters.backupdrill >>]
+      jobs:
+        - backupdrill/backup-and-drill:
+            context: supabase-backup
+            bucket: my-supabase-backups
+            s3_endpoint: https://<account-id>.r2.cloudflarestorage.com
+            serial-group: << pipeline.project.slug >>/backupdrill

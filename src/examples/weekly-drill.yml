@@ -1,0 +1,33 @@
+description: >
+  Back up every day and drill once a week from two schedule triggers, one
+  setting the backupdrill pipeline parameter to backup and the other to drill.
+  The bucket keys sit in a context both jobs use, the Supabase credentials in
+  one only the backup uses. The shared serial group keeps a drill from
+  starting while a backup is still writing its snapshot.
+usage:
+  version: 2.1
+  orbs:
+    backupdrill: backupdrill/supabase-backup@1.0.0
+  parameters:
+    backupdrill:
+      type: string
+      default: ""
+  workflows:
+    daily-backup:
+      when:
+        equal: [backup, << pipeline.parameters.backupdrill >>]
+      jobs:
+        - backupdrill/backup:
+            context: [backup-bucket, supabase-source]
+            bucket: my-supabase-backups
+            s3_region: us-east-1
+            serial-group: << pipeline.project.slug >>/backupdrill
+    weekly-drill:
+      when:
+        equal: [drill, << pipeline.parameters.backupdrill >>]
+      jobs:
+        - backupdrill/drill:
+            context: backup-bucket
+            bucket: my-supabase-backups
+            s3_region: us-east-1
+            serial-group: << pipeline.project.slug >>/backupdrill

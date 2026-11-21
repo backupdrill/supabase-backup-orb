@@ -1,0 +1,32 @@
+description: >
+  Back up two Supabase projects into one bucket. The bucket keys sit in a
+  shared context, and each project's BACKUPDRILL_DATABASE_URL (and its Storage
+  keys, if you back up Storage files) in a context of its own. Give each
+  project its own project_name so the snapshots land in separate folders.
+usage:
+  version: 2.1
+  orbs:
+    backupdrill: backupdrill/supabase-backup@1.0.0
+  parameters:
+    backupdrill:
+      type: string
+      default: ""
+  workflows:
+    supabase-backup:
+      when:
+        equal: [backup-and-drill, << pipeline.parameters.backupdrill >>]
+      jobs:
+        - backupdrill/backup-and-drill:
+            name: production
+            context: [backup-bucket, supabase-production]
+            bucket: my-supabase-backups
+            s3_endpoint: https://<account-id>.r2.cloudflarestorage.com
+            project_name: production
+            serial-group: << pipeline.project.slug >>/backupdrill-production
+        - backupdrill/backup:
+            name: staging
+            context: [backup-bucket, supabase-staging]
+            bucket: my-supabase-backups
+            s3_endpoint: https://<account-id>.r2.cloudflarestorage.com
+            project_name: staging
+            serial-group: << pipeline.project.slug >>/backupdrill-staging

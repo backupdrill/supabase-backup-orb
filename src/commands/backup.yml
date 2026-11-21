@@ -1,0 +1,64 @@
+description: >
+  Run `backupdrill backup`: dump the Supabase Postgres database into your
+  bucket, next to a manifest.json with the dump's SHA-256 checksum.
+  By default the CLI tries to save Auth users to auth.dump when the
+  database role can read the Auth tables; BACKUPDRILL_AUTH=off skips that dump.
+  To include Storage files, set all four BACKUPDRILL_SUPABASE_STORAGE_*
+  variables. Needs
+  Node.js 20 or newer and the PostgreSQL client (see install-postgres-client).
+  Reads BACKUPDRILL_DATABASE_URL and the bucket keys from the environment.
+
+parameters:
+  cli_version:
+    type: string
+    default: "2.11.1"
+    description: backupdrill npm version. Use 2.11.1 or a newer full version number, or latest.
+  postgres_version:
+    type: integer
+    default: 17
+    description: >
+      PostgreSQL major version of the pg_dump to use. It cannot be lower than
+      the Postgres version of your Supabase project.
+  bucket:
+    type: string
+    default: ""
+    description: Bucket name. Leave empty to use the BACKUPDRILL_S3_BUCKET variable.
+  s3_endpoint:
+    type: string
+    default: ""
+    description: >
+      S3 endpoint for R2, B2 and other S3-compatible storage. Leave empty for
+      AWS S3 or to use the BACKUPDRILL_S3_ENDPOINT variable.
+  s3_region:
+    type: string
+    default: ""
+    description: >
+      Bucket region, such as us-east-1. Leave empty to use the
+      BACKUPDRILL_S3_REGION variable, or auto when that isn't set either.
+  project_name:
+    type: string
+    default: ""
+    description: >
+      Folder for this project's snapshots in the bucket. Leave empty to use the
+      BACKUPDRILL_PROJECT_NAME variable, or supabase.
+  no_output_timeout:
+    type: string
+    default: 30m
+    description: >
+      How long the step may go without printing anything before CircleCI stops
+      it. A large pg_dump can stay quiet for a while.
+
+steps:
+  - run:
+      name: Back up Supabase with backupdrill
+      no_output_timeout: << parameters.no_output_timeout >>
+      environment:
+        BACKUPDRILL_ORB_COMMAND: backup
+        BACKUPDRILL_ORB_CLI_VERSION: "<< parameters.cli_version >>"
+        BACKUPDRILL_ORB_BUCKET: "<< parameters.bucket >>"
+        BACKUPDRILL_ORB_S3_ENDPOINT: "<< parameters.s3_endpoint >>"
+        BACKUPDRILL_ORB_S3_REGION: "<< parameters.s3_region >>"
+        BACKUPDRILL_ORB_PROJECT_NAME: "<< parameters.project_name >>"
+        BACKUPDRILL_PG_DUMP: /usr/lib/postgresql/<< parameters.postgres_version >>/bin/pg_dump
+        NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      command: <<include(scripts/run-cli.sh)>>
