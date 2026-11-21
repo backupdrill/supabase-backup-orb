@@ -1,6 +1,6 @@
 # Supabase backup and restore drill orb for CircleCI
 
-A CircleCI orb that runs the open-source [backupdrill](https://www.npmjs.com/package/backupdrill) CLI in your own pipeline. It backs up a Supabase project into your own S3-compatible bucket, such as AWS S3, Cloudflare R2 or Backblaze B2, and restore-drills the backups.
+A CircleCI orb that runs the open-source [backupdrill](https://www.npmjs.com/package/backupdrill) CLI in your pipeline. It backs up your Supabase project to an S3-compatible bucket you control, such as AWS S3, Cloudflare R2 or Backblaze B2, and runs restore drills on those backups.
 
 - **Backup** dumps the Postgres database next to a `manifest.json` that records the dump's SHA-256 checksum. Once you set the project's Storage S3 endpoint, region, access key ID and secret access key, it copies your Storage files too. It dumps the `public` schema unless you list others in a `BACKUPDRILL_SCHEMAS` variable (comma-separated). By default it also tries to save Auth users to a separate `auth.dump`; see [Auth users](#auth-users).
 - **Drill** restores a snapshot into a throwaway Postgres and checks it: the archive checksum, a sample of Storage file checksums, and that every table in the manifest came back. For ordinary tables it compares the exact row count with the count in the dump, and a difference of one row fails the job. Materialized views, partitioned parent tables and tables an extension fills aren't compared row by row; the drill flags them if they come back empty when the manifest expects rows. If the snapshot includes `auth.dump`, the drill also tries to restore it and reports the Auth result separately. The database and Storage checks decide whether the job passes.
@@ -47,11 +47,11 @@ The workflow runs only when the `backupdrill` pipeline parameter is `backup-and-
    | `BACKUPDRILL_S3_SECRET_ACCESS_KEY` | The bucket's secret access key |
    | `BACKUPDRILL_SUPABASE_STORAGE_ENDPOINT`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Optional. Set all four to back up Storage files. The keys come from **Storage > Settings > S3 Access Keys** in Supabase |
 
-   A new context can be used by every project in the organization. Restrict it to the project that runs the backups, add an expression restriction so only pipelines whose configuration comes from your default branch can use it (on GitHub App projects the configuration can come from another ref than the checkout, so restrict on the configuration source; CircleCI's context docs list the pipeline values for each integration), and on GitHub organizations restrict it to a security group as well. Context values take precedence over project variables of the same name.
+   A new context can be used by every project in the organization. Restrict it to the project that runs the backups, add an expression restriction so only pipelines whose configuration comes from your default branch can use it (on GitHub App projects the configuration can come from another ref than the checkout, so restrict on the configuration source; CircleCI's context docs list the pipeline values for each integration), and if your CircleCI organization is of type `github`, restrict it to a security group too. Context values take precedence over project variables of the same name.
 
 2. **Add the orb** to `.circleci/config.yml` as in the quick start. For AWS S3, leave out `s3_endpoint` and set `s3_region` (for example `us-east-1`). For R2, the region can stay empty.
 
-3. **Create a schedule trigger** on your default branch, for example daily at 03:00 UTC, and give it the pipeline parameter `backupdrill` = `backup-and-drill`. Schedule triggers are under **Project Settings > Triggers** for GitHub OAuth and Bitbucket projects, and under **Project Settings > Project Setup** for GitHub App projects. The trigger runs as the user it is attributed to, who needs access to the context. Then trigger a pipeline on that branch by hand with the same parameter and check that the job passes.
+3. **Create a schedule trigger** on your default branch, for example daily at 03:00 UTC, and give it the pipeline parameter `backupdrill` = `backup-and-drill`. Schedule triggers are under **Project Settings > Triggers** for GitHub OAuth and Bitbucket projects, and under **Project Settings > Project Setup** for GitHub App projects. If the context is restricted to a security group, choose a user who has access to it as the trigger's actor. Then trigger a pipeline on that branch by hand with the same parameter and check that the job passes.
 
 ## Jobs
 
@@ -139,7 +139,9 @@ Don't put the same variable in two contexts that one job uses.
 
 ## Alerts with Healthchecks.io
 
-Set `BACKUPDRILL_PING_URL` and the CLI sends start, success and failure pings. With `backup-and-drill`, only the drill pings, so the check turns green once the drill passes, and a failed backup shows up as a missing ping when the grace period runs out. When backup and drill run as separate jobs, give each its own check by putting each ping URL in a small context that only that job uses: with one shared check, daily backups keep it green even after the drills stop. Set each check's period to match its schedule trigger, and its grace time longer than the job takes, queue time included. After the first scheduled run, check that the checks have received a ping, because a check still in the New state won't alert.
+Set `BACKUPDRILL_PING_URL` and the CLI sends start, success and failure pings. In `backup-and-drill`, only the drill sends pings, so the check turns green when the drill's success ping arrives. If the backup fails, an active check alerts once the expected ping is overdue and the grace period ends.
+
+For separate backup and drill jobs, put each ping URL in a context only that job uses. A shared check can stay green on daily backup pings after the drills stop. Set each check's period to its schedule, and its grace time longer than the job takes, queue time included. After the first scheduled run, confirm each check received a ping: checks still in the New state won't alert.
 
 ## Good to know
 
