@@ -1,0 +1,21 @@
+# Lets CircleCI follow this repository. Nothing runs unless a pipeline is
+# triggered by hand with the `run` parameter set to true.
+version: 2.1
+
+parameters:
+  run:
+    type: boolean
+    default: false
+
+jobs:
+  noop:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - run: echo "CircleCI is connected to this repository."
+
+workflows:
+  noop:
+    when: << pipeline.parameters.run >>
+    jobs:
+      - noop
