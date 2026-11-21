@@ -47,7 +47,7 @@ The workflow runs only when the `backupdrill` pipeline parameter is `backup-and-
    | `BACKUPDRILL_S3_SECRET_ACCESS_KEY` | The bucket's secret access key |
    | `BACKUPDRILL_SUPABASE_STORAGE_ENDPOINT`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Optional. Set all four to back up Storage files. The keys come from **Storage > Settings > S3 Access Keys** in Supabase |
 
-   A new context can be used by every project in the organization. Restrict it to the project that runs the backups, add an expression restriction such as `pipeline.git.branch == "main"` so a pipeline on another branch of that project can't use it, and on GitHub organizations restrict it to a security group as well. Context values take precedence over project variables of the same name.
+   A new context can be used by every project in the organization. Restrict it to the project that runs the backups, add an expression restriction so only pipelines whose configuration comes from your default branch can use it (on GitHub App projects the configuration can come from another ref than the checkout, so restrict on the configuration source; CircleCI's context docs list the pipeline values for each integration), and on GitHub organizations restrict it to a security group as well. Context values take precedence over project variables of the same name.
 
 2. **Add the orb** to `.circleci/config.yml` as in the quick start. For AWS S3, leave out `s3_endpoint` and set `s3_region` (for example `us-east-1`). For R2, the region can stay empty.
 
@@ -139,7 +139,7 @@ Don't put the same variable in two contexts that one job uses.
 
 ## Alerts with Healthchecks.io
 
-Set `BACKUPDRILL_PING_URL` and the CLI sends start, success and failure pings. With `backup-and-drill`, only the drill pings, so the check turns green once the drill passes, and a failed backup shows up as a missing ping when the grace period runs out. When backup and drill run as separate jobs, give each its own check by putting each ping URL in a small context that only that job uses: with one shared check, daily backups keep it green even after the drills stop. After the first scheduled run, check that the checks have received a ping, because a check still in the New state won't alert.
+Set `BACKUPDRILL_PING_URL` and the CLI sends start, success and failure pings. With `backup-and-drill`, only the drill pings, so the check turns green once the drill passes, and a failed backup shows up as a missing ping when the grace period runs out. When backup and drill run as separate jobs, give each its own check by putting each ping URL in a small context that only that job uses: with one shared check, daily backups keep it green even after the drills stop. Set each check's period to match its schedule trigger, and its grace time longer than the job takes, queue time included. After the first scheduled run, check that the checks have received a ping, because a check still in the New state won't alert.
 
 ## Good to know
 
