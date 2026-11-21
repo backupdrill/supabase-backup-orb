@@ -1,10 +1,10 @@
 description: >
   Run `backupdrill backup`: dump the Supabase Postgres database into your
   bucket, next to a manifest.json with the dump's SHA-256 checksum. Auth users
-  and Storage files go into the same snapshot when the role can read them and
-  the Storage keys are set. Needs Node.js 20 or newer and the PostgreSQL
-  client (see install-postgres-client). Reads BACKUPDRILL_DATABASE_URL and the
-  bucket keys from the environment.
+  go into the same snapshot when the database role can read them, and Storage
+  files once the four BACKUPDRILL_SUPABASE_STORAGE_* variables are set. Needs
+  Node.js 20 or newer and the PostgreSQL client (see install-postgres-client).
+  Reads BACKUPDRILL_DATABASE_URL and the bucket keys from the environment.
 
 parameters:
   cli_version:

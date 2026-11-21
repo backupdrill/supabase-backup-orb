@@ -23,16 +23,28 @@ if [ "$(id -u)" -ne 0 ]; then
   sudo_cmd=(sudo)
 fi
 
-# Machine images run apt jobs of their own right after boot. Wait for the dpkg
-# lock instead of failing on it.
+# Machine images run apt jobs of their own right after boot. DPkg::Lock::Timeout
+# waits for the dpkg lock; `apt-get update` (also the one inside the PGDG
+# helper) takes the package-list lock, which that option doesn't cover, so
+# every apt step gets a few tries.
+retry() {
+  local attempt
+  for attempt in 1 2 3 4 5 6; do
+    "$@" && return 0
+    [ "$attempt" -eq 6 ] && break
+    echo "Retrying in 20s (attempt ${attempt} of 6 failed, apt may be locked by another update)"
+    sleep 20
+  done
+  return 1
+}
 apt_get() {
   "${sudo_cmd[@]}" env DEBIAN_FRONTEND=noninteractive \
     apt-get -o DPkg::Lock::Timeout=300 -y -qq "$@"
 }
 
-apt_get update
-apt_get install --no-install-recommends ca-certificates postgresql-common
-"${sudo_cmd[@]}" /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-apt_get install --no-install-recommends "postgresql-client-${major}"
+retry apt_get update
+retry apt_get install --no-install-recommends ca-certificates postgresql-common
+retry "${sudo_cmd[@]}" /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+retry apt_get install --no-install-recommends "postgresql-client-${major}"
 
 "/usr/lib/postgresql/${major}/bin/pg_dump" --version

@@ -113,21 +113,37 @@ if [ "$mode" = "drill" ]; then
   exit 0
 fi
 
-"$cli" backup --config "$no_config" >"${work_dir}/backup.json"
-[ "$mode" = "backup-and-drill" ] || exit 0
+if [ "$mode" = "backup" ]; then
+  "$cli" backup --config "$no_config" >"${work_dir}/backup.json"
+  exit 0
+fi
+
+# backup-and-drill: only the drill pings Healthchecks, so the check turns green
+# only once the drill has passed. A failed backup or snapshot handoff sends no
+# success ping, and the check alerts when its grace period runs out.
+ping_url="${BACKUPDRILL_PING_URL:-}"
+env -u BACKUPDRILL_PING_URL "$cli" backup --config "$no_config" >"${work_dir}/backup.json"
 
 # Drill exactly the snapshot this backup wrote, not whatever is newest in the
 # bucket by the time the drill starts. The dump key is
 # <prefix>/<project>/<snapshot>/<file>, and the snapshot folder name is what
 # `backupdrill drill --snapshot` takes.
+# A result that isn't JSON is never echoed: a parse error quotes the text it
+# choked on, and that text can be a Storage path.
 snapshot="$("${clean_env[@]}" node -e '
-  const lines = require("fs").readFileSync(process.argv[1], "utf8").trim().split("\n");
-  const key = JSON.parse(lines[lines.length - 1]).manifest?.dump?.key;
-  const name = typeof key === "string" ? key.split("/").at(-2) : "";
-  if (!/^[0-9A-Za-z._-]+$/.test(name || "")) process.exit(1);
+  let name = "";
+  try {
+    const lines = require("fs").readFileSync(process.argv[1], "utf8").trim().split("\n");
+    const key = JSON.parse(lines[lines.length - 1]).manifest?.dump?.key;
+    if (typeof key === "string") name = key.split("/").at(-2) ?? "";
+  } catch {
+    process.exit(1);
+  }
+  if (!/^[0-9A-Za-z._-]+$/.test(name)) process.exit(1);
   console.log(name);
-' "${work_dir}/backup.json")" || fail "The backup finished, but its snapshot name could not be read from the CLI result."
+' "${work_dir}/backup.json" 2>/dev/null)" || fail "The backup finished, but its snapshot name could not be read from the CLI result."
 
 echo "Restore drill of snapshot ${snapshot}"
 unset "${source_variables[@]}"
+if [ -n "$ping_url" ]; then export BACKUPDRILL_PING_URL="$ping_url"; fi
 "$cli" drill --config "$no_config" --snapshot "$snapshot" >"${work_dir}/drill.json"

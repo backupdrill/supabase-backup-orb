@@ -4,10 +4,10 @@ description: >
   Scheduled Supabase backups and restore drills in CircleCI, with the
   open-source backupdrill CLI (MIT). The backup dumps the Postgres database to
   your own S3, R2 or B2 bucket, tries to include Auth users when the database
-  role can read them, and copies Storage files once you add the project's
-  Storage S3 keys. The drill restores a snapshot into a throwaway Postgres,
-  checks that the tables in the manifest came back, and compares the exact row
-  count of each ordinary table with the dump.
+  role can read them, and copies Storage files once you set the project's
+  Storage S3 endpoint, region and keys. The drill restores a snapshot into a
+  throwaway Postgres, checks that the tables in the manifest came back, and
+  compares the exact row count of each ordinary table with the dump.
 
 display:
   home_url: https://backupdrill.com
